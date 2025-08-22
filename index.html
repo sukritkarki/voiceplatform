@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stand with Nepal - Voice Your Concerns</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <img src="public/5f6be966-ba38-431f-843f-8a7b3e1329b4.jpg" alt="Stand with Nepal Logo" class="logo">
+                    <span class="logo-text">Stand with Nepal</span>
+                </div>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="#home" class="nav-link">Home</a></li>
+                    <li class="nav-item"><a href="#issues" class="nav-link">Issues</a></li>
+                    <li class="nav-item"><a href="#map" class="nav-link">Map View</a></li>
+                    <li class="nav-item"><a href="#analytics" class="nav-link">Analytics</a></li>
+                    <li class="nav-item"><a href="login.html" class="nav-link">Login</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link btn-primary" id="postIssueBtn">Post Issue</a></li>
+                </ul>
+                <div class="hamburger">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">Your Voice Matters</h1>
+            <p class="hero-subtitle">Report local issues, share opinions, and help improve governance in Nepal</p>
+            <div class="hero-buttons">
+                <button class="btn btn-primary" id="reportIssueBtn">Report an Issue</button>
+                <button class="btn btn-secondary" id="viewIssuesBtn">View Issues</button>
+            </div>
+        </div>
+        <div class="hero-stats">
+            <div class="stat-item">
+                <span class="stat-number" id="totalIssues">1,247</span>
+                <span class="stat-label">Issues Reported</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="resolvedIssues">892</span>
+                <span class="stat-label">Issues Resolved</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="activeUsers">3,456</span>
+                <span class="stat-label">Active Citizens</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Issues Section -->
+    <section id="issues" class="issues-section">
+        <div class="container">
+            <h2 class="section-title">Recent Issues</h2>
+            
+            <!-- Filters -->
+            <div class="filters">
+                <select id="categoryFilter" class="filter-select">
+                    <option value="">All Categories</option>
+                    <option value="road">Road & Infrastructure</option>
+                    <option value="electricity">Electricity</option>
+                    <option value="water">Water Supply</option>
+                    <option value="healthcare">Healthcare</option>
+                    <option value="corruption">Corruption</option>
+                    <option value="education">Education</option>
+                    <option value="environment">Environment</option>
+                </select>
+                
+                <select id="locationFilter" class="filter-select">
+                    <option value="">All Locations</option>
+                    <option value="kathmandu">Kathmandu</option>
+                    <option value="pokhara">Pokhara</option>
+                    <option value="chitwan">Chitwan</option>
+                    <option value="lalitpur">Lalitpur</option>
+                </select>
+                
+                <select id="statusFilter" class="filter-select">
+                    <option value="">All Status</option>
+                    <option value="new">New</option>
+                    <option value="acknowledged">Acknowledged</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                </select>
+            </div>
+            
+            <!-- Filter Statistics -->
+            <div class="filter-stats">
+                <span class="filter-count">Loading issues...</span>
+            </div>
+
+            <!-- Issues Grid -->
+            <div class="issues-grid" id="issuesGrid">
+                <!-- Issues will be loaded dynamically -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Map Section -->
+    <section id="map" class="map-section">
+        <div class="container">
+            <h2 class="section-title">Issues Map</h2>
+            <div id="issuesMap" class="issues-map"></div>
+        </div>
+    </section>
+
+    <!-- Analytics Section -->
+    <section id="analytics" class="analytics-section">
+        <div class="container">
+            <h2 class="section-title">Analytics Dashboard</h2>
+            <div class="analytics-grid">
+                <div class="chart-container">
+                    <h3>Issues by Category</h3>
+                    <canvas id="categoryChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Resolution Trends</h3>
+                    <canvas id="trendChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Regional Distribution</h3>
+                    <canvas id="regionChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Response Time</h3>
+                    <canvas id="responseChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trending Issues Section -->
+    <section class="trending-section">
+        <div class="container">
+            <h2 class="section-title">Trending Issues</h2>
+            <p style="text-align: center; opacity: 0.9; margin-bottom: 2rem;">
+                Most discussed issues in your community this week
+            </p>
+            <div class="trending-issues" id="trendingIssues">
+                <!-- Trending issues will be loaded here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <button class="quick-action-btn tooltip" id="quickReportBtn">
+            <i class="fas fa-plus"></i>
+            <span class="tooltiptext">Report Issue</span>
+        </button>
+    </div>
+
+    <!-- Issue Modal -->
+    <div id="issueModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Report an Issue</h2>
+            <form id="issueForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="issueTitle">Issue Title *</label>
+                    <input type="text" id="issueTitle" name="title" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="issueCategory">Category *</label>
+                    <select id="issueCategory" name="category" required>
+                        <option value="">Select Category</option>
+                        <option value="road">Road & Infrastructure</option>
+                        <option value="electricity">Electricity</option>
+                        <option value="water">Water Supply</option>
+                        <option value="healthcare">Healthcare</option>
+                        <option value="corruption">Corruption</option>
+                        <option value="education">Education</option>
+                        <option value="environment">Environment</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="issueDescription">Description *</label>
+                    <textarea id="issueDescription" name="description" rows="4" required></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="province">Province *</label>
+                        <select id="province" name="province" required>
+                            <option value="">Select Province</option>
+                            <option value="1">Province 1</option>
+                            <option value="2">Madhesh Province</option>
+                            <option value="3">Bagmati Province</option>
+                            <option value="4">Gandaki Province</option>
+                            <option value="5">Lumbini Province</option>
+                            <option value="6">Karnali Province</option>
+                            <option value="7">Sudurpashchim Province</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="district">District *</label>
+                        <select id="district" name="district" required>
+                            <option value="">Select District</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="municipality">Municipality *</label>
+                        <select id="municipality" name="municipality" required>
+                            <option value="">Select Municipality</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ward">Ward No *</label>
+                        <select id="ward" name="ward" required>
+                            <option value="">Select Ward</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="issueImage">Upload Image/Video</label>
+                    <input type="file" id="issueImage" name="media" accept="image/*,video/*">
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="anonymous" name="anonymous">
+                        Post anonymously
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label for="severity">Severity Level</label>
+                    <select id="severity" name="severity">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Submit Issue</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Stand with Nepal</h3>
+                    <p>Empowering citizens to voice their concerns and improve governance across Nepal.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#issues">Issues</a></li>
+                        <li><a href="#map">Map</a></li>
+                        <li><a href="login.html">Login</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <p>Email: info@standwithnepal.org</p>
+                    <p>Phone: +977-1-4444444</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Stand with Nepal. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

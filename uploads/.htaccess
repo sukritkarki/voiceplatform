@@ -1,0 +1,12 @@
+# Secure uploads directory
+Options -Indexes
+<Files "*.php">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Allow only specific file types
+<FilesMatch "\.(jpg|jpeg|png|gif|mp4|mov|avi)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Stand with Nepal</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="public/5f6be966-ba38-431f-843f-8a7b3e1329b4.jpg" alt="Logo" class="sidebar-logo">
+                <h3>Stand with Nepal</h3>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="#overview" class="nav-link active"><i class="fas fa-tachometer-alt"></i> Overview</a></li>
+                    <li><a href="#issues" class="nav-link"><i class="fas fa-exclamation-triangle"></i> Issues</a></li>
+                    <li><a href="#map" class="nav-link"><i class="fas fa-map-marked-alt"></i> Map View</a></li>
+                    <li><a href="#analytics" class="nav-link"><i class="fas fa-chart-bar"></i> Analytics</a></li>
+                    <li><a href="#reports" class="nav-link"><i class="fas fa-file-alt"></i> Reports</a></li>
+                    <li><a href="#settings" class="nav-link"><i class="fas fa-cog"></i> Settings</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-details">
+                        <span class="user-name" id="userName">John Doe</span>
+                        <span class="user-role" id="userRole">Ward Representative</span>
+                    </div>
+                </div>
+                <button class="btn btn-secondary logout-btn" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <button class="sidebar-toggle" id="sidebarToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 class="page-title" id="pageTitle">Dashboard Overview</h1>
+                </div>
+                <div class="header-right">
+                    <div class="notifications">
+                        <button class="notification-btn">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-badge">5</span>
+                        </button>
+                    </div>
+                    <div class="jurisdiction-info">
+                        <span id="jurisdictionInfo">Kathmandu Ward-10</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Overview Section -->
+            <section id="overview-section" class="content-section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalIssuesCount">24</h3>
+                            <p>Total Issues</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon pending">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="pendingIssuesCount">8</h3>
+                            <p>Pending Issues</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon progress">
+                            <i class="fas fa-spinner"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="inProgressCount">6</h3>
+                            <p>In Progress</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon resolved">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="resolvedCount">10</h3>
+                            <p>Resolved</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h3>Recent Issues</h3>
+                        <div class="recent-issues" id="recentIssues">
+                            <!-- Recent issues will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3>Priority Actions</h3>
+                        <div class="priority-actions">
+                            <div class="action-item urgent">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span>3 urgent issues require immediate attention</span>
+                            </div>
+                            <div class="action-item">
+                                <i class="fas fa-clock"></i>
+                                <span>5 issues pending for more than 7 days</span>
+                            </div>
+                            <div class="action-item">
+                                <i class="fas fa-users"></i>
+                                <span>12 issues with high community support</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Issues Section -->
+            <section id="issues-section" class="content-section">
+                <div class="section-header">
+                    <h2>Manage Issues</h2>
+                    <div class="section-filters">
+                        <select id="statusFilterDash" class="filter-select">
+                            <option value="">All Status</option>
+                            <option value="new">New</option>
+                            <option value="acknowledged">Acknowledged</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                        </select>
+                        <select id="categoryFilterDash" class="filter-select">
+                            <option value="">All Categories</option>
+                            <option value="road">Road & Infrastructure</option>
+                            <option value="electricity">Electricity</option>
+                            <option value="water">Water Supply</option>
+                            <option value="healthcare">Healthcare</option>
+                            <option value="corruption">Corruption</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="issues-table-container">
+                    <table class="issues-table">
+                        <thead>
+                            <tr>
+                                <th>Issue</th>
+                                <th>Category</th>
+                                <th>Location</th>
+                                <th>Status</th>
+                                <th>Priority</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="issuesTableBody">
+                            <!-- Issues will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Map Section -->
+            <section id="map-section" class="content-section">
+                <h2>Issues Map</h2>
+                <div id="dashboardMap" class="dashboard-map"></div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section id="analytics-section" class="content-section">
+                <h2>Analytics & Reports</h2>
+                <div class="analytics-grid">
+                    <div class="chart-container">
+                        <h3>Issues by Category</h3>
+                        <canvas id="dashCategoryChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Resolution Timeline</h3>
+                        <canvas id="dashTimelineChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Monthly Trends</h3>
+                        <canvas id="dashTrendChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Response Performance</h3>
+                        <canvas id="dashPerformanceChart"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Issue Detail Modal -->
+    <div id="issueDetailModal" class="modal">
+        <div class="modal-content large">
+            <span class="close">&times;</span>
+            <div class="issue-detail-header">
+                <h2 id="issueDetailTitle">Issue Title</h2>
+                <span class="issue-status" id="issueDetailStatus">New</span>
+            </div>
+            <div class="issue-detail-content">
+                <div class="issue-info">
+                    <div class="info-row">
+                        <strong>Category:</strong> <span id="issueDetailCategory"></span>
+                    </div>
+                    <div class="info-row">
+                        <strong>Location:</strong> <span id="issueDetailLocation"></span>
+                    </div>
+                    <div class="info-row">
+                        <strong>Priority:</strong> <span id="issueDetailPriority"></span>
+                    </div>
+                    <div class="info-row">
+                        <strong>Reported:</strong> <span id="issueDetailDate"></span>
+                    </div>
+                    <div class="info-row">
+                        <strong>Upvotes:</strong> <span id="issueDetailUpvotes"></span>
+                    </div>
+                </div>
+                <div class="issue-description">
+                    <h4>Description</h4>
+                    <p id="issueDetailDescription"></p>
+                </div>
+                <div class="issue-media" id="issueDetailMedia">
+                    <!-- Media will be loaded here -->
+                </div>
+                <div class="issue-actions">
+                    <button class="btn btn-primary" id="acknowledgeBtn">Acknowledge</button>
+                    <button class="btn btn-warning" id="inProgressBtn">Mark In Progress</button>
+                    <button class="btn btn-success" id="resolveBtn">Mark Resolved</button>
+                </div>
+                <div class="issue-updates">
+                    <h4>Updates & Comments</h4>
+                    <div id="issueUpdates">
+                        <!-- Updates will be loaded here -->
+                    </div>
+                    <form id="updateForm" class="update-form">
+                        <textarea id="updateText" placeholder="Add an update or comment..." rows="3"></textarea>
+                        <button type="submit" class="btn btn-primary">Add Update</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="assets/js/dashboard.js"></script>
+</body>
+</html>

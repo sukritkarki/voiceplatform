@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - Stand with Nepal</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/profile.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <img src="public/5f6be966-ba38-431f-843f-8a7b3e1329b4.jpg" alt="Stand with Nepal Logo" class="logo">
+                    <span class="logo-text">Stand with Nepal</span>
+                </div>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="index.html" class="nav-link">Home</a></li>
+                    <li class="nav-item"><a href="profile.html" class="nav-link active">Profile</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link" id="logoutLink">Logout</a></li>
+                </ul>
+                <div class="hamburger">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Profile Container -->
+    <div class="profile-container">
+        <div class="profile-sidebar">
+            <div class="profile-card">
+                <div class="profile-avatar">
+                    <img src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150" alt="Profile" id="profileImage">
+                    <button class="avatar-edit-btn" id="editAvatarBtn">
+                        <i class="fas fa-camera"></i>
+                    </button>
+                </div>
+                <div class="profile-info">
+                    <h2 id="profileName">John Doe</h2>
+                    <p id="profileEmail">john.doe@email.com</p>
+                    <span class="profile-badge" id="profileType">Citizen</span>
+                </div>
+                <div class="profile-stats">
+                    <div class="stat">
+                        <span class="stat-number" id="issuesPosted">12</span>
+                        <span class="stat-label">Issues Posted</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number" id="upvotesReceived">45</span>
+                        <span class="stat-label">Upvotes Received</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number" id="commentsPosted">28</span>
+                        <span class="stat-label">Comments</span>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="profile-nav">
+                <ul>
+                    <li><a href="#personal" class="profile-nav-link active">Personal Info</a></li>
+                    <li><a href="#issues" class="profile-nav-link">My Issues</a></li>
+                    <li><a href="#activity" class="profile-nav-link">Activity</a></li>
+                    <li><a href="#notifications" class="profile-nav-link">Notifications</a></li>
+                    <li><a href="#settings" class="profile-nav-link">Settings</a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <div class="profile-content">
+            <!-- Personal Info Section -->
+            <section id="personal-section" class="profile-section active">
+                <div class="section-header">
+                    <h3>Personal Information</h3>
+                    <button class="btn btn-primary" id="editProfileBtn">
+                        <i class="fas fa-edit"></i> Edit Profile
+                    </button>
+                </div>
+                <form id="profileForm" class="profile-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fullName">Full Name</label>
+                            <input type="text" id="fullName" name="full_name" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" name="email" readonly>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" id="phone" name="phone" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="dateOfBirth">Date of Birth</label>
+                            <input type="date" id="dateOfBirth" name="date_of_birth" readonly>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="province">Province</label>
+                            <select id="province" name="province" disabled>
+                                <option value="">Select Province</option>
+                                <option value="1">Province 1</option>
+                                <option value="2">Madhesh Province</option>
+                                <option value="3">Bagmati Province</option>
+                                <option value="4">Gandaki Province</option>
+                                <option value="5">Lumbini Province</option>
+                                <option value="6">Karnali Province</option>
+                                <option value="7">Sudurpashchim Province</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="district">District</label>
+                            <input type="text" id="district" name="district" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Address</label>
+                        <textarea id="address" name="address" rows="3" readonly></textarea>
+                    </div>
+                    <div class="form-actions" id="formActions" style="display: none;">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- My Issues Section -->
+            <section id="issues-section" class="profile-section">
+                <div class="section-header">
+                    <h3>My Issues</h3>
+                    <div class="issue-filters">
+                        <select id="issueStatusFilter" class="filter-select">
+                            <option value="">All Status</option>
+                            <option value="new">New</option>
+                            <option value="acknowledged">Acknowledged</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="my-issues-grid" id="myIssuesGrid">
+                    <!-- User's issues will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Activity Section -->
+            <section id="activity-section" class="profile-section">
+                <div class="section-header">
+                    <h3>Recent Activity</h3>
+                </div>
+                <div class="activity-timeline" id="activityTimeline">
+                    <!-- Activity timeline will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Notifications Section -->
+            <section id="notifications-section" class="profile-section">
+                <div class="section-header">
+                    <h3>Notifications</h3>
+                    <button class="btn btn-secondary" id="markAllReadBtn">
+                        <i class="fas fa-check-double"></i> Mark All Read
+                    </button>
+                </div>
+                <div class="notifications-list" id="notificationsList">
+                    <!-- Notifications will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="profile-section">
+                <div class="section-header">
+                    <h3>Account Settings</h3>
+                </div>
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <h4>Privacy Settings</h4>
+                        <div class="setting-item">
+                            <label class="setting-label">
+                                <input type="checkbox" id="publicProfile">
+                                <span class="checkmark"></span>
+                                Make my profile public
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label class="setting-label">
+                                <input type="checkbox" id="emailNotifications">
+                                <span class="checkmark"></span>
+                                Email notifications
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label class="setting-label">
+                                <input type="checkbox" id="smsNotifications">
+                                <span class="checkmark"></span>
+                                SMS notifications
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                        <h4>Security</h4>
+                        <button class="btn btn-primary" id="changePasswordBtn">
+                            <i class="fas fa-key"></i> Change Password
+                        </button>
+                        <button class="btn btn-secondary" id="enable2FABtn">
+                            <i class="fas fa-shield-alt"></i> Enable 2FA
+                        </button>
+                    </div>
+                    <div class="settings-card">
+                        <h4>Data & Privacy</h4>
+                        <button class="btn btn-secondary" id="downloadDataBtn">
+                            <i class="fas fa-download"></i> Download My Data
+                        </button>
+                        <button class="btn btn-danger" id="deleteAccountBtn">
+                            <i class="fas fa-trash"></i> Delete Account
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Change Password</h2>
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label for="currentPassword">Current Password</label>
+                    <input type="password" id="currentPassword" name="current_password" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" name="new_password" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" name="confirm_password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Password</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="assets/js/profile.js"></script>
+</body>
+</html>

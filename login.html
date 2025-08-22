@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Stand with Nepal</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <img src="public/5f6be966-ba38-431f-843f-8a7b3e1329b4.jpg" alt="Stand with Nepal Logo" class="login-logo">
+                <h2>Stand with Nepal</h2>
+                <p>Login to your account</p>
+            </div>
+            
+            <div class="login-tabs">
+                <button class="tab-btn active" data-tab="citizen">Citizen</button>
+                <button class="tab-btn" data-tab="official">Government Official</button>
+                <button class="tab-btn" data-tab="admin">Admin</button>
+            </div>
+            
+            <!-- Citizen Login -->
+            <div id="citizen-tab" class="tab-content active">
+                <form id="citizenLoginForm" class="login-form">
+                    <div class="form-group">
+                        <label for="citizenEmail">Email</label>
+                        <input type="email" id="citizenEmail" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="citizenPassword">Password</label>
+                        <input type="password" id="citizenPassword" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login as Citizen</button>
+                </form>
+                <div class="login-footer">
+                    <p>Don't have an account? <a href="#" id="registerLink">Register here</a></p>
+                    <p><a href="#" class="forgot-password">Forgot Password?</a></p>
+                </div>
+            </div>
+            
+            <!-- Government Official Login -->
+            <div id="official-tab" class="tab-content">
+                <form id="officialLoginForm" class="login-form">
+                    <div class="form-group">
+                        <label for="officialId">Official ID</label>
+                        <input type="text" id="officialId" name="official_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="officialPassword">Password</label>
+                        <input type="password" id="officialPassword" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="jurisdiction">Jurisdiction</label>
+                        <select id="jurisdiction" name="jurisdiction" required>
+                            <option value="">Select Jurisdiction</option>
+                            <option value="ward">Ward Level</option>
+                            <option value="municipality">Municipality Level</option>
+                            <option value="district">District Level</option>
+                            <option value="province">Province Level</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login as Official</button>
+                </form>
+                <div class="login-footer">
+                    <p>Need access? <a href="#" id="requestAccessLink">Request Official Access</a></p>
+                </div>
+            </div>
+            
+            <!-- Admin Login -->
+            <div id="admin-tab" class="tab-content">
+                <form id="adminLoginForm" class="login-form">
+                    <div class="form-group">
+                        <label for="adminUsername">Username</label>
+                        <input type="text" id="adminUsername" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminPassword">Password</label>
+                        <input type="password" id="adminPassword" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminCode">Admin Code</label>
+                        <input type="text" id="adminCode" name="admin_code" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login as Admin</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="back-home">
+            <a href="index.html" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </a>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Register as Citizen</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="regFullName">Full Name *</label>
+                    <input type="text" id="regFullName" name="full_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="regEmail">Email *</label>
+                    <input type="email" id="regEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPhone">Phone Number *</label>
+                    <input type="tel" id="regPhone" name="phone" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Password *</label>
+                    <input type="password" id="regPassword" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="regConfirmPassword">Confirm Password *</label>
+                    <input type="password" id="regConfirmPassword" name="confirm_password" required>
+                </div>
+                <div class="form-group">
+                    <label for="regProvince">Province *</label>
+                    <select id="regProvince" name="province" required>
+                        <option value="">Select Province</option>
+                        <option value="1">Province 1</option>
+                        <option value="2">Madhesh Province</option>
+                        <option value="3">Bagmati Province</option>
+                        <option value="4">Gandaki Province</option>
+                        <option value="5">Lumbini Province</option>
+                        <option value="6">Karnali Province</option>
+                        <option value="7">Sudurpashchim Province</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="agreeTerms" name="agree_terms" required>
+                        I agree to the Terms and Conditions
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary">Register</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="assets/js/login.js"></script>
+</body>
+</html>
