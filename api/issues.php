@@ -1,4 +1,9 @@
 <?php
+// Enable error reporting for development
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // Don't display errors to users
+ini_set('log_errors', 1);
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, PUT, OPTIONS');
@@ -11,10 +16,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once '../config/database.php';
 session_start();
 
-$database = new Database();
-$db = $database->getConnection();
+try {
+    $database = new Database();
+    $db = $database->getConnection();
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Database connection failed']);
+    exit;
+}
 
 $action = $_GET['action'] ?? '';
+
+// Rate limiting
+$client_ip = $_SERVER['REMOTE_ADDR'];
+$rate_limit_key = "rate_limit_{$client_ip}";
+
+if (!checkRateLimit($rate_limit_key)) {
+    http_response_code(429);
+    echo json_encode(['success' => false, 'message' => 'Too many requests']);
+    exit;
+}
 
 switch($action) {
     case 'create':
@@ -38,26 +59,74 @@ switch($action) {
     case 'get_comments':
         getComments($db);
         break;
+    case 'get_nearby':
+        getNearbyIssues($db);
+        break;
+    case 'get_trending':
+        getTrendingIssues($db);
+        break;
     default:
+        http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Invalid action']);
 }
 
+function checkRateLimit($key, $limit = 100, $window = 3600) {
+    // Simple file-based rate limiting
+    $rate_file = sys_get_temp_dir() . "/rate_limit_" . md5($key);
+    $current_time = time();
+    
+    if (file_exists($rate_file)) {
+        $data = json_decode(file_get_contents($rate_file), true);
+        if ($current_time - $data['start_time'] < $window) {
+            if ($data['count'] >= $limit) {
+                return false;
+            }
+            $data['count']++;
+        } else {
+            $data = ['start_time' => $current_time, 'count' => 1];
+        }
+    } else {
+        $data = ['start_time' => $current_time, 'count' => 1];
+    }
+    
+    file_put_contents($rate_file, json_encode($data));
+    return true;
+}
+
 function createIssue($db) {
-    $input = json_decode(file_get_contents('php://input'), true);
+    // Validate input
+    $input = validateInput(file_get_contents('php://input'));
     
     if (!$input) {
+        http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Invalid input']);
         return;
     }
     
+    // Validate required fields
+    $required_fields = ['title', 'description', 'category', 'province', 'district', 'municipality', 'ward'];
+    foreach ($required_fields as $field) {
+        if (empty($input[$field])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => "Missing required field: $field"]);
+            return;
+        }
+    }
+    
+    // Sanitize inputs
+    $input['title'] = sanitizeInput($input['title']);
+    $input['description'] = sanitizeInput($input['description']);
+    
     try {
+        $db->beginTransaction();
+        
         $user_id = $input['anonymous'] ? null : ($_SESSION['user_id'] ?? null);
         
-        $stmt = $db->prepare("INSERT INTO issues (title, description, category, severity, province_id, district, municipality, ward_no, latitude, longitude, anonymous, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $db->prepare("INSERT INTO issues (title, description, category, severity, province_id, district, municipality, ward_no, latitude, longitude, anonymous, user_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         
         $stmt->execute([
-            $input['title'],
-            $input['description'],
+            trim($input['title']),
+            trim($input['description']),
             $input['category'],
             $input['severity'] ?? 'medium',
             $input['province'],
@@ -72,6 +141,12 @@ function createIssue($db) {
         
         $issue_id = $db->lastInsertId();
         
+        // Log the action
+        logAction($db, 'issue_created', $issue_id, $user_id);
+        
+        $db->commit();
+        
+        http_response_code(201);
         echo json_encode([
             'success' => true, 
             'message' => 'Issue created successfully',
@@ -79,7 +154,33 @@ function createIssue($db) {
         ]);
         
     } catch(PDOException $e) {
+        $db->rollback();
+        error_log("Create issue error: " . $e->getMessage());
+        http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Failed to create issue: ' . $e->getMessage()]);
+    }
+}
+
+function validateInput($json_string) {
+    $input = json_decode($json_string, true);
+    
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        return false;
+    }
+    
+    return $input;
+}
+
+function sanitizeInput($input) {
+    return htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8');
+}
+
+function logAction($db, $action, $related_id = null, $user_id = null) {
+    try {
+        $stmt = $db->prepare("INSERT INTO activity_log (action, related_id, user_id, ip_address, created_at) VALUES (?, ?, ?, ?, NOW())");
+        $stmt->execute([$action, $related_id, $user_id, $_SERVER['REMOTE_ADDR']]);
+    } catch (Exception $e) {
+        error_log("Failed to log action: " . $e->getMessage());
     }
 }
 
@@ -87,6 +188,8 @@ function listIssues($db) {
     try {
         $filters = [];
         $params = [];
+        $limit = min(intval($_GET['limit'] ?? 50), 100); // Max 100 items
+        $offset = max(intval($_GET['offset'] ?? 0), 0);
         
         // Apply filters
         if (isset($_GET['category']) && $_GET['category'] !== '') {
@@ -118,14 +221,75 @@ function listIssues($db) {
         
         $where_clause = !empty($filters) ? 'WHERE ' . implode(' AND ', $filters) : '';
         
+        // Get total count for pagination
+        $count_stmt = $db->prepare("SELECT COUNT(*) as total FROM issues i LEFT JOIN users u ON i.user_id = u.id $where_clause");
+        $count_stmt->execute($params);
+        $total = $count_stmt->fetch()['total'];
+        
         $stmt = $db->prepare("SELECT i.*, u.full_name as reporter_name, 
                              (SELECT COUNT(*) FROM issue_upvotes WHERE issue_id = i.id) as upvotes
                              FROM issues i 
                              LEFT JOIN users u ON i.user_id = u.id 
                              $where_clause 
-                             ORDER BY i.created_at DESC");
+                             ORDER BY i.created_at DESC 
+                             LIMIT ? OFFSET ?");
         
+        $params[] = $limit;
+        $params[] = $offset;
         $stmt->execute($params);
+        $issues = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Hide reporter name for anonymous posts
+        foreach ($issues as &$issue) {
+            if ($issue['anonymous']) {
+                $issue['reporter_name'] = 'Anonymous';
+            }
+        }
+        
+        echo json_encode([
+            'success' => true, 
+            'issues' => $issues,
+            'pagination' => [
+                'total' => $total,
+                'limit' => $limit,
+                'offset' => $offset,
+                'has_more' => ($offset + $limit) < $total
+            ]
+        ]);
+        
+    } catch(PDOException $e) {
+        error_log("List issues error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Failed to fetch issues: ' . $e->getMessage()]);
+    }
+}
+
+function getNearbyIssues($db) {
+    $lat = floatval($_GET['lat'] ?? 0);
+    $lng = floatval($_GET['lng'] ?? 0);
+    $radius = min(floatval($_GET['radius'] ?? 10), 50); // Max 50km radius
+    
+    if ($lat == 0 || $lng == 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Invalid coordinates']);
+        return;
+    }
+    
+    try {
+        // Using Haversine formula to find nearby issues
+        $stmt = $db->prepare("SELECT i.*, u.full_name as reporter_name,
+                             (SELECT COUNT(*) FROM issue_upvotes WHERE issue_id = i.id) as upvotes,
+                             (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * 
+                              cos(radians(longitude) - radians(?)) + 
+                              sin(radians(?)) * sin(radians(latitude)))) AS distance
+                             FROM issues i 
+                             LEFT JOIN users u ON i.user_id = u.id 
+                             WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+                             HAVING distance < ?
+                             ORDER BY distance ASC
+                             LIMIT 50");
+        
+        $stmt->execute([$lat, $lng, $lat, $radius]);
         $issues = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Hide reporter name for anonymous posts
@@ -138,7 +302,41 @@ function listIssues($db) {
         echo json_encode(['success' => true, 'issues' => $issues]);
         
     } catch(PDOException $e) {
-        echo json_encode(['success' => false, 'message' => 'Failed to fetch issues: ' . $e->getMessage()]);
+        error_log("Nearby issues error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Failed to fetch nearby issues']);
+    }
+}
+
+function getTrendingIssues($db) {
+    try {
+        // Get trending issues based on upvotes and recency
+        $stmt = $db->prepare("SELECT i.*, u.full_name as reporter_name,
+                             (SELECT COUNT(*) FROM issue_upvotes WHERE issue_id = i.id) as upvotes,
+                             (SELECT COUNT(*) FROM issue_comments WHERE issue_id = i.id) as comments,
+                             TIMESTAMPDIFF(HOUR, i.created_at, NOW()) as hours_old
+                             FROM issues i 
+                             LEFT JOIN users u ON i.user_id = u.id 
+                             WHERE i.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                             ORDER BY (upvotes * 2 + comments) / (hours_old + 1) DESC
+                             LIMIT 10");
+        
+        $stmt->execute();
+        $issues = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Hide reporter name for anonymous posts
+        foreach ($issues as &$issue) {
+            if ($issue['anonymous']) {
+                $issue['reporter_name'] = 'Anonymous';
+            }
+        }
+        
+        echo json_encode(['success' => true, 'issues' => $issues]);
+        
+    } catch(PDOException $e) {
+        error_log("Trending issues error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Failed to fetch trending issues']);
     }
 }
 
