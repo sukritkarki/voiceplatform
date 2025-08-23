@@ -4,6 +4,17 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0); // Don't display errors to users
 ini_set('log_errors', 1);
 
+// Enable output compression
+if (!ob_get_level()) {
+    ob_start('ob_gzhandler');
+}
+
+// Set cache headers for static content
+if (isset($_GET['action']) && $_GET['action'] === 'list') {
+    header('Cache-Control: public, max-age=300'); // 5 minutes
+    header('ETag: ' . md5(serialize($_GET)));
+}
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, PUT, OPTIONS');
@@ -15,6 +26,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../config/database.php';
 session_start();
+
+// Redis cache connection (if available)
+$redis = null;
+if (class_exists('Redis')) {
+    try {
+        $redis = new Redis();
+        $redis->connect('127.0.0.1', 6379);
+    } catch (Exception $e) {
+        $redis = null;
+    }
+}
 
 try {
     $database = new Database();
@@ -37,12 +59,26 @@ if (!checkRateLimit($rate_limit_key)) {
     exit;
 }
 
+// Enhanced caching for list requests
+if ($action === 'list') {
+    $cache_key = 'issues_list_' . md5(serialize($_GET));
+    
+    if ($redis) {
+        $cached_result = $redis->get($cache_key);
+        if ($cached_result) {
+            header('X-Cache: HIT');
+            echo $cached_result;
+            exit;
+        }
+    }
+}
+
 switch($action) {
     case 'create':
         createIssue($db);
         break;
     case 'list':
-        listIssues($db);
+        listIssues($db, $redis);
         break;
     case 'get':
         getIssue($db);
@@ -70,7 +106,15 @@ switch($action) {
         echo json_encode(['success' => false, 'message' => 'Invalid action']);
 }
 
-function checkRateLimit($key, $limit = 100, $window = 3600) {
+function checkRateLimit($key, $redis = null, $limit = 100, $window = 3600) {
+    if ($redis) {
+        $current = $redis->incr($key);
+        if ($current === 1) {
+            $redis->expire($key, $window);
+        }
+        return $current <= $limit;
+    }
+    
     // Simple file-based rate limiting
     $rate_file = sys_get_temp_dir() . "/rate_limit_" . md5($key);
     $current_time = time();
@@ -91,6 +135,101 @@ function checkRateLimit($key, $limit = 100, $window = 3600) {
     
     file_put_contents($rate_file, json_encode($data));
     return true;
+}
+
+// Enhanced list function with caching
+function listIssues($db, $redis = null) {
+    try {
+        $filters = [];
+        $params = [];
+        $limit = min(intval($_GET['limit'] ?? 50), 100);
+        $offset = max(intval($_GET['offset'] ?? 0), 0);
+        
+        // Build cache key
+        $cache_key = 'issues_list_' . md5(serialize($_GET));
+        
+        // Apply filters
+        if (isset($_GET['category']) && $_GET['category'] !== '') {
+            $filters[] = "category = ?";
+            $params[] = $_GET['category'];
+        }
+        
+        if (isset($_GET['status']) && $_GET['status'] !== '') {
+            $filters[] = "status = ?";
+            $params[] = $_GET['status'];
+        }
+        
+        if (isset($_GET['district']) && $_GET['district'] !== '') {
+            $filters[] = "district LIKE ?";
+            $params[] = '%' . $_GET['district'] . '%';
+        }
+        
+        // For government officials, filter by jurisdiction
+        if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'official') {
+            if (isset($_SESSION['district'])) {
+                $filters[] = "district = ?";
+                $params[] = $_SESSION['district'];
+            }
+            if (isset($_SESSION['ward_no']) && $_SESSION['jurisdiction'] === 'ward') {
+                $filters[] = "ward_no = ?";
+                $params[] = $_SESSION['ward_no'];
+            }
+        }
+        
+        $where_clause = !empty($filters) ? 'WHERE ' . implode(' AND ', $filters) : '';
+        
+        // Optimized query with proper indexing
+        $stmt = $db->prepare("SELECT i.*, u.full_name as reporter_name, 
+                             (SELECT COUNT(*) FROM issue_upvotes WHERE issue_id = i.id) as upvotes,
+                             (SELECT COUNT(*) FROM issue_comments WHERE issue_id = i.id) as comments
+                             FROM issues i 
+                             LEFT JOIN users u ON i.user_id = u.id 
+                             $where_clause 
+                             ORDER BY i.created_at DESC 
+                             LIMIT ? OFFSET ?");
+        
+        $params[] = $limit;
+        $params[] = $offset;
+        $stmt->execute($params);
+        $issues = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Get total count for pagination
+        $count_params = array_slice($params, 0, -2); // Remove limit and offset
+        $count_stmt = $db->prepare("SELECT COUNT(*) as total FROM issues i LEFT JOIN users u ON i.user_id = u.id $where_clause");
+        $count_stmt->execute($count_params);
+        $total = $count_stmt->fetch()['total'];
+        
+        // Hide reporter name for anonymous posts
+        foreach ($issues as &$issue) {
+            if ($issue['anonymous']) {
+                $issue['reporter_name'] = 'Anonymous';
+            }
+        }
+        
+        $result = [
+            'success' => true, 
+            'issues' => $issues,
+            'pagination' => [
+                'total' => $total,
+                'limit' => $limit,
+                'offset' => $offset,
+                'has_more' => ($offset + $limit) < $total
+            ]
+        ];
+        
+        // Cache the result
+        if ($redis) {
+            $redis->setex($cache_key, 300, json_encode($result)); // 5 minutes cache
+            header('X-Cache: MISS');
+        }
+        
+        echo json_encode($result);
+        
+    } catch(PDOException $e) {
+        error_log("List issues error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Failed to fetch issues']);
+    }
 }
 
 function createIssue($db) {

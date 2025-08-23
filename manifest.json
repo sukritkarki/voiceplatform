@@ -1,0 +1,29 @@
+{
+  "name": "Stand with Nepal",
+  "short_name": "StandWithNepal",
+  "description": "Civic engagement platform for reporting local issues and improving governance in Nepal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2c5aa0",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "public/5f6be966-ba38-431f-843f-8a7b3e1329b4.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "public/5f6be966-ba38-431f-843f-8a7b3e1329b4.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["government", "social", "utilities"],
+  "lang": "en",
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false
+}

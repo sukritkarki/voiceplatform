@@ -3,18 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Stand with Nepal - Civic engagement platform for reporting local issues and improving governance">
+    <meta name="keywords" content="Nepal, civic engagement, government, issues, reporting, democracy">
+    <meta name="author" content="Stand with Nepal">
+    
+    <!-- Open Graph tags -->
+    <meta property="og:title" content="Stand with Nepal - Voice Your Concerns">
+    <meta property="og:description" content="Report local issues, share opinions, and help improve governance in Nepal">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://standwithnepal.org">
+    <meta property="og:image" content="public/5f6be966-ba38-431f-843f-8a7b3e1329b4.jpg">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="assets/css/style.css" as="style">
+    <link rel="preload" href="assets/js/main.js" as="script">
+    <link rel="preload" href="public/5f6be966-ba38-431f-843f-8a7b3e1329b4.jpg" as="image">
+    
+    <!-- DNS prefetch for external resources -->
+    <link rel="dns-prefetch" href="//unpkg.com">
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    
     <title>Stand with Nepal - Voice Your Concerns</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- PWA manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2c5aa0">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="public/5f6be966-ba38-431f-843f-8a7b3e1329b4.jpg">
 </head>
 <body>
+    <!-- Critical CSS inline for above-the-fold content -->
+    <style>
+        .hero{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:120px 0 80px;text-align:center}
+        .hero-title{font-size:3.5rem;font-weight:700;margin-bottom:1rem;text-shadow:2px 2px 4px rgba(0,0,0,0.3)}
+        .btn-primary{background:linear-gradient(135deg,#2c5aa0 0%,#1e3a8a 100%);color:white;padding:12px 24px;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.3s ease;text-decoration:none;display:inline-block;text-align:center}
+    </style>
+    
     <!-- Header -->
     <header class="header">
         <nav class="navbar">
             <div class="nav-container">
                 <div class="nav-logo">
-                    <img src="public/5f6be966-ba38-431f-843f-8a7b3e1329b4.jpg" alt="Stand with Nepal Logo" class="logo">
+                    <img src="public/5f6be966-ba38-431f-843f-8a7b3e1329b4.jpg" alt="Stand with Nepal Logo" class="logo" loading="eager">
                     <span class="logo-text">Stand with Nepal</span>
                 </div>
                 <ul class="nav-menu">
@@ -67,6 +102,8 @@
             
             <!-- Filters -->
             <div class="filters">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search issues..." aria-label="Search issues">
+                
                 <select id="categoryFilter" class="filter-select">
                     <option value="">All Categories</option>
                     <option value="road">Road & Infrastructure</option>
@@ -93,16 +130,51 @@
                     <option value="in-progress">In Progress</option>
                     <option value="resolved">Resolved</option>
                 </select>
+                
+                <button id="clearFilters" class="btn btn-secondary">Clear Filters</button>
             </div>
+            
+            <!-- Advanced Filters -->
+            <div class="advanced-filters" style="display: none;">
+                <select id="severityFilter" class="filter-select">
+                    <option value="">All Severities</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                </select>
+                
+                <input type="date" id="dateFromFilter" class="filter-select">
+                <input type="date" id="dateToFilter" class="filter-select">
+                
+                <button id="nearbyIssues" class="btn btn-secondary">
+                    <i class="fas fa-location-arrow"></i> Nearby Issues
+                </button>
+            </div>
+            
+            <button id="toggleAdvancedFilters" class="btn btn-secondary">
+                <i class="fas fa-sliders-h"></i> Advanced Filters
+            </button>
             
             <!-- Filter Statistics -->
             <div class="filter-stats">
-                <span class="filter-count">Loading issues...</span>
+                <span class="filter-count" id="filterCount">Loading issues...</span>
             </div>
 
             <!-- Issues Grid -->
-            <div class="issues-grid" id="issuesGrid">
+            <div class="issues-grid virtual-scroll-container" id="issuesGrid">
                 <!-- Issues will be loaded dynamically -->
+                <div class="loading" id="issuesLoading">
+                    <div class="spinner"></div>
+                    <p>Loading issues...</p>
+                </div>
+            </div>
+            
+            <!-- Load More Button -->
+            <div class="load-more-container" style="text-align: center; margin-top: 2rem;">
+                <button id="loadMoreBtn" class="btn btn-secondary" style="display: none;">
+                    Load More Issues
+                </button>
             </div>
         </div>
     </section>

@@ -4,6 +4,170 @@ import { IssueCard } from './components/IssueCard.js';
 import { NotificationManager } from './components/NotificationManager.js';
 import { LoadingManager } from './components/LoadingManager.js';
 
+// Performance monitoring
+const performanceMonitor = {
+    startTime: performance.now(),
+    metrics: {},
+    
+    mark(name) {
+        this.metrics[name] = performance.now() - this.startTime;
+    },
+    
+    measure(name, startMark, endMark) {
+        const start = this.metrics[startMark] || 0;
+        const end = this.metrics[endMark] || performance.now() - this.startTime;
+        this.metrics[name] = end - start;
+    },
+    
+    report() {
+        console.table(this.metrics);
+    }
+};
+
+// Advanced caching system
+class CacheManager {
+    constructor() {
+        this.cache = new Map();
+        this.maxSize = 100;
+        this.ttl = 5 * 60 * 1000; // 5 minutes
+    }
+    
+    set(key, value, customTTL = null) {
+        if (this.cache.size >= this.maxSize) {
+            const firstKey = this.cache.keys().next().value;
+            this.cache.delete(firstKey);
+        }
+        
+        this.cache.set(key, {
+            value,
+            timestamp: Date.now(),
+            ttl: customTTL || this.ttl
+        });
+    }
+    
+    get(key) {
+        const item = this.cache.get(key);
+        if (!item) return null;
+        
+        if (Date.now() - item.timestamp > item.ttl) {
+            this.cache.delete(key);
+            return null;
+        }
+        
+        return item.value;
+    }
+    
+    clear() {
+        this.cache.clear();
+    }
+}
+
+// Lazy loading for images
+class LazyLoader {
+    constructor() {
+        this.observer = null;
+        this.init();
+    }
+    
+    init() {
+        if ('IntersectionObserver' in window) {
+            this.observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        this.loadImage(entry.target);
+                        this.observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                rootMargin: '50px'
+            });
+        }
+    }
+    
+    observe(img) {
+        if (this.observer) {
+            this.observer.observe(img);
+        } else {
+            this.loadImage(img);
+        }
+    }
+    
+    loadImage(img) {
+        if (img.dataset.src) {
+            img.src = img.dataset.src;
+            img.classList.remove('lazy');
+            img.classList.add('loaded');
+        }
+    }
+}
+
+// Virtual scrolling for large lists
+class VirtualScroller {
+    constructor(container, itemHeight, renderItem) {
+        this.container = container;
+        this.itemHeight = itemHeight;
+        this.renderItem = renderItem;
+        this.items = [];
+        this.visibleStart = 0;
+        this.visibleEnd = 0;
+        this.scrollTop = 0;
+        this.containerHeight = 0;
+        
+        this.init();
+    }
+    
+    init() {
+        this.container.style.position = 'relative';
+        this.container.addEventListener('scroll', this.onScroll.bind(this));
+        this.updateDimensions();
+    }
+    
+    setItems(items) {
+        this.items = items;
+        this.render();
+    }
+    
+    updateDimensions() {
+        this.containerHeight = this.container.clientHeight;
+        this.visibleCount = Math.ceil(this.containerHeight / this.itemHeight) + 2;
+    }
+    
+    onScroll() {
+        this.scrollTop = this.container.scrollTop;
+        this.visibleStart = Math.floor(this.scrollTop / this.itemHeight);
+        this.visibleEnd = Math.min(this.visibleStart + this.visibleCount, this.items.length);
+        this.render();
+    }
+    
+    render() {
+        const totalHeight = this.items.length * this.itemHeight;
+        const offsetY = this.visibleStart * this.itemHeight;
+        
+        this.container.innerHTML = `
+            <div style="height: ${totalHeight}px; position: relative;">
+                <div style="transform: translateY(${offsetY}px);">
+                    ${this.items.slice(this.visibleStart, this.visibleEnd)
+                        .map((item, index) => this.renderItem(item, this.visibleStart + index))
+                        .join('')}
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Service Worker registration for offline support
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('SW registered: ', registration);
+            })
+            .catch(registrationError => {
+                console.log('SW registration failed: ', registrationError);
+            });
+    });
+}
+
 // Application class
 class StandWithNepalApp {
     constructor() {
@@ -22,6 +186,9 @@ class StandWithNepalApp {
         // Initialize managers
         this.notificationManager = new NotificationManager();
         this.loadingManager = new LoadingManager();
+        this.cache = new CacheManager();
+        this.lazyLoader = new LazyLoader();
+        this.virtualScroller = null;
         
         // Debounced functions
         this.debouncedSearch = performance.debounce(this.handleSearch.bind(this), 300);
@@ -30,6 +197,7 @@ class StandWithNepalApp {
 
     async init() {
         try {
+            performanceMonitor.mark('appInitStart');
             this.setupEventListeners();
             this.loadUserPreferences();
             await this.detectUserLocation();
@@ -43,6 +211,8 @@ class StandWithNepalApp {
             await this.loadTrendingIssues();
             this.setupQuickActions();
             this.enhanceAccessibility();
+            performanceMonitor.mark('appInitEnd');
+            performanceMonitor.measure('appInitTime', 'appInitStart', 'appInitEnd');
         } catch (error) {
             console.error('App initialization error:', error);
             this.showNotification('Failed to initialize application', 'error');
@@ -129,12 +299,22 @@ class StandWithNepalApp {
             return; // Don't search for single characters
         }
         
+        const cacheKey = `search_${searchTerm}`;
+        const cachedResults = this.cache.get(cacheKey);
+        
+        if (cachedResults) {
+            this.displayIssues(cachedResults);
+            this.updateMapMarkers(cachedResults);
+            return;
+        }
+        
         const filteredIssues = this.issuesData.filter(issue => 
             issue.title.toLowerCase().includes(searchTerm) ||
             issue.description.toLowerCase().includes(searchTerm) ||
             issue.municipality.toLowerCase().includes(searchTerm)
         );
         
+        this.cache.set(cacheKey, filteredIssues, 2 * 60 * 1000); // 2 minutes cache
         this.displayIssues(filteredIssues);
         this.updateMapMarkers(filteredIssues);
     }
@@ -143,6 +323,17 @@ class StandWithNepalApp {
         const issuesGrid = document.getElementById('issuesGrid');
         if (issuesGrid) {
             this.loadingManager.showSkeleton(issuesGrid, 'list');
+        }
+
+        const cacheKey = 'issues_list';
+        const cachedIssues = this.cache.get(cacheKey);
+        
+        if (cachedIssues) {
+            this.issuesData = cachedIssues;
+            this.displayIssues(this.filterIssues(cachedIssues));
+            this.updateMapMarkers(cachedIssues);
+            this.updateStats(cachedIssues);
+            return;
         }
 
         try {
@@ -163,6 +354,7 @@ class StandWithNepalApp {
             }
             
             this.issuesData = issues;
+            this.cache.set(cacheKey, issues);
             this.displayIssues(this.filterIssues(issues));
             this.updateMapMarkers(issues);
             this.updateStats(issues);
@@ -188,6 +380,15 @@ class StandWithNepalApp {
             return;
         }
 
+        // Use virtual scrolling for large lists
+        if (issues.length > 50) {
+            if (!this.virtualScroller) {
+                this.virtualScroller = new VirtualScroller(issuesGrid, 200, this.renderIssueCard.bind(this));
+            }
+            this.virtualScroller.setItems(issues);
+            return;
+        }
+        
         // Use DocumentFragment for better performance
         const fragment = document.createDocumentFragment();
         
@@ -199,7 +400,79 @@ class StandWithNepalApp {
         issuesGrid.innerHTML = '';
         issuesGrid.appendChild(fragment);
         
+        // Initialize lazy loading for images
+        issuesGrid.querySelectorAll('img.lazy').forEach(img => {
+            this.lazyLoader.observe(img);
+        });
+        
         this.updateFilterStats(issues);
+    }
+
+    renderIssueCard(issue, index = 0) {
+        const distance = this.currentLocation && issue.lat && issue.lng ? 
+            this.calculateDistance(this.currentLocation.lat, this.currentLocation.lng, issue.lat, issue.lng) : null;
+        
+        return `
+            <div class="issue-card ${issue.severity}" data-issue-id="${issue.id}" onclick="app.viewIssueDetails('${issue.id}')">
+                <div class="issue-header">
+                    <div>
+                        <h3 class="issue-title">${this.escapeHtml(issue.title)}</h3>
+                        <span class="issue-category">${this.getCategoryLabel(issue.category)}</span>
+                        <span class="severity-badge severity-${issue.severity}">${issue.severity.toUpperCase()}</span>
+                    </div>
+                    <span class="status-badge status-${issue.status}">${this.getStatusLabel(issue.status)}</span>
+                </div>
+                <p class="issue-description">${this.truncateText(this.escapeHtml(issue.description), 120)}</p>
+                ${issue.image ? `<img class="lazy issue-image" data-src="${issue.image}" alt="Issue image">` : ''}
+                <div class="issue-meta">
+                    <div class="issue-location">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>${this.escapeHtml(issue.municipality)}, Ward ${issue.ward}</span>
+                        ${distance ? `<span class="distance">${distance.toFixed(1)}km away</span>` : ''}
+                    </div>
+                    <div class="issue-stats">
+                        <div class="stat">
+                            <i class="fas fa-thumbs-up"></i>
+                            <span>${issue.upvotes || 0}</span>
+                        </div>
+                        <div class="stat">
+                            <i class="fas fa-clock"></i>
+                            <span>${this.formatDate(issue.timestamp)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="issue-actions">
+                    <button class="btn btn-sm btn-secondary upvote-btn" onclick="event.stopPropagation(); app.upvoteIssue('${issue.id}')" ${issue.userUpvoted ? 'disabled' : ''}>
+                        <i class="fas fa-thumbs-up"></i> ${issue.userUpvoted ? 'Upvoted' : 'Upvote'}
+                    </button>
+                    <button class="btn btn-sm btn-secondary share-btn" onclick="event.stopPropagation(); app.shareIssue('${issue.id}')">
+                        <i class="fas fa-share"></i> Share
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    truncateText(text, maxLength) {
+        if (text.length <= maxLength) return text;
+        return text.substr(0, maxLength) + '...';
+    }
+
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
     }
 
     showNotification(message, type = 'info') {
@@ -214,6 +487,7 @@ let app;
 
 // DOM Content Loaded
 document.addEventListener('DOMContentLoaded', function() {
+    performanceMonitor.mark('domContentLoaded');
     app = new StandWithNepalApp();
     app.init();
 });
@@ -221,8 +495,18 @@ document.addEventListener('DOMContentLoaded', function() {
 // Export for global access (for onclick handlers)
 window.app = app;
 
+let map;
+let issuesData = [];
+let filteredIssues = [];
+let currentUser = null;
+let currentLocation = null;
+const cache = new CacheManager();
+const lazyLoader = new LazyLoader();
+let virtualScroller = null;
+
 // Initialize Application
 function initializeApp() {
+    performanceMonitor.mark('appInitStart');
     setupEventListeners();
     loadUserPreferences();
     detectUserLocation();
@@ -235,6 +519,8 @@ function initializeApp() {
     initializeNotifications();
     loadTrendingIssues();
     setupQuickActions();
+    performanceMonitor.mark('appInitEnd');
+    performanceMonitor.measure('appInitTime', 'appInitStart', 'appInitEnd');
 }
 
 // Event Listeners
@@ -278,7 +564,7 @@ function setupEventListeners() {
     // Advanced search
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
-        searchInput.addEventListener('input', debounce(handleSearch, 300));
+        searchInput.addEventListener('input', debouncedSearch);
     }
 
     // Severity filter
@@ -323,17 +609,33 @@ function detectUserLocation() {
     }
 }
 
-// Advanced Search
-function handleSearch(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    const filteredIssues = issuesData.filter(issue => 
-        issue.title.toLowerCase().includes(searchTerm) ||
-        issue.description.toLowerCase().includes(searchTerm) ||
-        issue.municipality.toLowerCase().includes(searchTerm)
+// Enhanced search with debouncing and caching
+const debouncedSearch = debounce(function(e) {
+    const query = e.target.value.toLowerCase().trim();
+    
+    if (query.length < 2 && query.length > 0) {
+        return; // Don't search for single characters
+    }
+    
+    const cacheKey = `search_${query}`;
+    const cachedResults = cache.get(cacheKey);
+    
+    if (cachedResults) {
+        displayIssues(cachedResults);
+        updateMapMarkers(cachedResults);
+        return;
+    }
+    
+    const results = issuesData.filter(issue => 
+        issue.title.toLowerCase().includes(query) ||
+        issue.description.toLowerCase().includes(query) ||
+        issue.municipality.toLowerCase().includes(query)
     );
-    displayIssues(filteredIssues);
-    updateMapMarkers(filteredIssues);
-}
+    
+    cache.set(cacheKey, results, 2 * 60 * 1000); // 2 minutes cache
+    displayIssues(results);
+    updateMapMarkers(results);
+}, 300);
 
 // Advanced Filters Setup
 function setupAdvancedFilters() {
@@ -512,7 +814,55 @@ function debounce(func, wait) {
     };
 }
 
-// Enhanced Issue Display
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substr(0, maxLength) + '...';
+}
+
+// Enhanced issue loading with caching
+async function loadIssues() {
+    const cacheKey = 'issues_list';
+    const cachedIssues = cache.get(cacheKey);
+    
+    if (cachedIssues) {
+        issuesData = cachedIssues;
+        displayIssues(issuesData);
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        // Simulate API call - replace with actual API
+        const response = await fetch('api/issues.php?action=list');
+        const data = await response.json();
+        
+        if (data.success) {
+            issuesData = data.issues || generateSampleIssues();
+            cache.set(cacheKey, issuesData);
+        } else {
+            issuesData = generateSampleIssues();
+        }
+        
+        displayIssues(issuesData);
+        updateIssueStats();
+        
+    } catch (error) {
+        console.error('Error loading issues:', error);
+        issuesData = generateSampleIssues();
+        displayIssues(issuesData);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Optimized issue display with virtual scrolling
 function displayIssues(issues) {
     const issuesGrid = document.getElementById('issuesGrid');
     if (!issuesGrid) return;
@@ -521,14 +871,87 @@ function displayIssues(issues) {
         issuesGrid.innerHTML = `
             <div class="no-issues">
                 <i class="fas fa-search fa-3x"></i>
-                <h3>No issues found</h3>
-                <p>Try adjusting your filters or search terms</p>
-                <button class="btn btn-primary" onclick="clearAllFilters()">Clear Filters</button>
+                <h3>No Issues Found</h3>
+                <p>Try adjusting your filters or be the first to report an issue in this area.</p>
+                <button class="btn btn-primary" onclick="openIssueModal()">Report First Issue</button>
             </div>
         `;
         return;
     }
+
+    // Use virtual scrolling for large lists
+    if (issues.length > 50) {
+        if (!virtualScroller) {
+            virtualScroller = new VirtualScroller(issuesGrid, 200, renderIssueCard);
+        }
+        virtualScroller.setItems(issues);
+        return;
+    }
+    
+    // Regular rendering for smaller lists
+    const fragment = document.createDocumentFragment();
+    
+    issues.forEach(issue => {
+        const cardElement = document.createElement('div');
+        cardElement.innerHTML = renderIssueCard(issue);
+        fragment.appendChild(cardElement.firstElementChild);
+    });
+    
+    issuesGrid.innerHTML = '';
+    issuesGrid.appendChild(fragment);
+    
+    // Initialize lazy loading for images
+    issuesGrid.querySelectorAll('img.lazy').forEach(img => {
+        lazyLoader.observe(img);
+    });
 }
+
+// Optimized issue card rendering
+function renderIssueCard(issue, index = 0) {
+    const distance = currentLocation && issue.lat && issue.lng ? 
+        calculateDistance(currentLocation.lat, currentLocation.lng, issue.lat, issue.lng) : null;
+    
+    return `
+        <div class="issue-card ${issue.severity}" data-issue-id="${issue.id}" onclick="openIssueDetail('${issue.id}')">
+            <div class="issue-header">
+                <div>
+                    <h3 class="issue-title">${escapeHtml(issue.title)}</h3>
+                    <span class="issue-category">${getCategoryLabel(issue.category)}</span>
+                    <span class="severity-badge severity-${issue.severity}">${issue.severity.toUpperCase()}</span>
+                </div>
+                <span class="status-badge status-${issue.status}">${getStatusLabel(issue.status)}</span>
+            </div>
+            <p class="issue-description">${truncateText(escapeHtml(issue.description), 120)}</p>
+            ${issue.image ? `<img class="lazy issue-image" data-src="${issue.image}" alt="Issue image">` : ''}
+            <div class="issue-meta">
+                <div class="issue-location">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>${escapeHtml(issue.municipality)}, Ward ${issue.ward}</span>
+                    ${distance ? `<span class="distance">${distance.toFixed(1)}km away</span>` : ''}
+                </div>
+                <div class="issue-stats">
+                    <div class="stat">
+                        <i class="fas fa-thumbs-up"></i>
+                        <span>${issue.upvotes || 0}</span>
+                    </div>
+                    <div class="stat">
+                        <i class="fas fa-clock"></i>
+                        <span>${formatDate(issue.timestamp)}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="issue-actions">
+                <button class="btn btn-sm btn-secondary upvote-btn" onclick="event.stopPropagation(); upvoteIssue('${issue.id}')" ${issue.userUpvoted ? 'disabled' : ''}>
+                    <i class="fas fa-thumbs-up"></i> ${issue.userUpvoted ? 'Upvoted' : 'Upvote'}
+                </button>
+                <button class="btn btn-sm btn-secondary share-btn" onclick="event.stopPropagation(); shareIssue('${issue.id}')">
+                    <i class="fas fa-share"></i> Share
+                </button>
+            </div>
+        </div>
+    `;
+}
+
 // Mobile Menu Setup
 function setupMobileMenu() {
     const hamburger = document.querySelector('.hamburger');
@@ -628,23 +1051,6 @@ function submitIssue(issueData) {
     }, 1500);
 }
 
-// Load and Display Issues
-function loadIssues() {
-    // Load from localStorage for demo, in real app this would be an API call
-    let issues = JSON.parse(localStorage.getItem('standwithnepal_issues') || '[]');
-    
-    // Add some sample data if empty
-    if (issues.length === 0) {
-        issues = getSampleIssues();
-        localStorage.setItem('standwithnepal_issues', JSON.stringify(issues));
-    }
-    
-    issuesData = issues;
-    displayIssues(filterIssues(issues));
-    updateMapMarkers(issues);
-    updateStats(issues);
-}
-
 function getSampleIssues() {
     return [
         {
@@ -699,93 +1105,6 @@ function getSampleIssues() {
             lng: 83.9856
         }
     ];
-}
-
-function displayIssues(issues) {
-    const issuesGrid = document.getElementById('issuesGrid');
-    if (!issuesGrid) return;
-
-    if (issues.length === 0) {
-        issuesGrid.innerHTML = '<div class="no-issues"><p>No issues found matching your criteria.</p></div>';
-        return;
-    }
-
-    issuesGrid.innerHTML = issues.map(issue => `
-        <div class="issue-card ${issue.severity}" onclick="viewIssueDetails('${issue.id}')">
-            <div class="issue-header">
-                <div>
-                    <h3 class="issue-title">${issue.title}</h3>
-                    <span class="issue-category">${getCategoryLabel(issue.category)}</span>
-                    <span class="severity-badge severity-${issue.severity}">${issue.severity.toUpperCase()}</span>
-                </div>
-                <span class="status-badge status-${issue.status}">${getStatusLabel(issue.status)}</span>
-            </div>
-            <p class="issue-description">${truncateText(issue.description, 120)}</p>
-            <div class="issue-meta">
-                <div class="issue-location">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>${issue.municipality}, Ward ${issue.ward}</span>
-                    ${currentLocation ? `<span class="distance">${calculateDistance(currentLocation.lat, currentLocation.lng, issue.lat || 0, issue.lng || 0).toFixed(1)}km away</span>` : ''}
-                </div>
-                <div class="issue-stats">
-                    <div class="stat">
-                        <i class="fas fa-thumbs-up"></i>
-                        <span>${issue.upvotes}</span>
-                    </div>
-                    <div class="stat">
-                        <i class="fas fa-clock"></i>
-                        <span>${formatDate(issue.timestamp)}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="issue-actions">
-                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); upvoteIssue('${issue.id}')">
-                    <i class="fas fa-thumbs-up"></i> Upvote
-                </button>
-                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); shareIssue('${issue.id}')">
-                    <i class="fas fa-share"></i> Share
-                </button>
-            </div>
-        </div>
-    `).join('');
-    issuesGrid.innerHTML = issues.map(issue => `
-        <div class="issue-card ${issue.severity}" onclick="viewIssueDetails('${issue.id}')">
-            <div class="issue-header">
-                <div>
-                    <h3 class="issue-title">${issue.title}</h3>
-                    <span class="issue-category">${getCategoryLabel(issue.category)}</span>
-                    <span class="severity-badge severity-${issue.severity}">${issue.severity.toUpperCase()}</span>
-                </div>
-                <span class="status-badge status-${issue.status}">${getStatusLabel(issue.status)}</span>
-            </div>
-            <p class="issue-description">${truncateText(issue.description, 120)}</p>
-            <div class="issue-meta">
-                <div class="issue-location">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>${issue.municipality}, Ward ${issue.ward}</span>
-                    ${currentLocation ? `<span class="distance">${calculateDistance(currentLocation.lat, currentLocation.lng, issue.lat || 0, issue.lng || 0).toFixed(1)}km away</span>` : ''}
-                </div>
-                <div class="issue-stats">
-                    <div class="stat">
-                        <i class="fas fa-thumbs-up"></i>
-                        <span>${issue.upvotes}</span>
-                    </div>
-                    <div class="stat">
-                        <i class="fas fa-clock"></i>
-                        <span>${formatDate(issue.timestamp)}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="issue-actions">
-                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); upvoteIssue('${issue.id}')">
-                    <i class="fas fa-thumbs-up"></i> Upvote
-                </button>
-                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); shareIssue('${issue.id}')">
-                    <i class="fas fa-share"></i> Share
-                </button>
-            </div>
-        </div>
-    `).join('');
 }
 
 // Clear All Filters
@@ -1159,11 +1478,6 @@ function getStatusLabel(status) {
         'resolved': 'Resolved'
     };
     return labels[status] || status;
-}
-
-function truncateText(text, maxLength) {
-    if (text.length <= maxLength) return text;
-    return text.substr(0, maxLength) + '...';
 }
 
 function formatDate(timestamp) {
