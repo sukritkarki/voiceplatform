@@ -493,36 +493,136 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Export for global access (for onclick handlers)
-window.app = app;
-
-let map;
-let issuesData = [];
-let filteredIssues = [];
-let currentUser = null;
-let currentLocation = null;
+// Initialize core systems
+const performanceMonitor = new PerformanceMonitor();
+const securityManager = new SecurityManager();
+const cacheManager = new CacheManager();
 const cache = new CacheManager();
-const lazyLoader = new LazyLoader();
-let virtualScroller = null;
-
+// Critical performance optimization
+performance.mark('app-start');
 // Initialize Application
-function initializeApp() {
-    performanceMonitor.mark('appInitStart');
-    setupEventListeners();
-    loadUserPreferences();
-    detectUserLocation();
-    initializeMap();
-    loadIssues();
-    setupCharts();
-    setupMobileMenu();
-    loadLocationData();
-    setupAdvancedFilters();
-    initializeNotifications();
-    loadTrendingIssues();
-    setupQuickActions();
-    performanceMonitor.mark('appInitEnd');
-    performanceMonitor.measure('appInitTime', 'appInitStart', 'appInitEnd');
+criticalResources.forEach(resource => {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.href = resource.href;
+    link.as = resource.as;
+    document.head.appendChild(link);
+});
+
+// Initialize app with performance monitoring
+let app;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
 }
 
+function initializeApp() {
+    performance.mark('app-init-start');
+    
+    // Initialize main application
+    app = new StandWithNepalApp();
+    
+    // Setup global error handling
+    setupGlobalErrorHandling();
+    
+    // Setup performance monitoring
+    setupPerformanceTracking();
+    
+    performance.mark('app-init-end');
+    performance.measure('app-initialization', 'app-init-start', 'app-init-end');
+}
+
+function setupGlobalErrorHandling() {
+    window.addEventListener('error', (e) => {
+        console.error('Global error:', e.error);
+        securityManager.reportSecurityEvent('javascript_error', {
+            message: e.error.message,
+            filename: e.filename,
+            lineno: e.lineno
+        });
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+        console.error('Unhandled promise rejection:', e.reason);
+        securityManager.reportSecurityEvent('promise_rejection', {
+            reason: e.reason
+        });
+    });
+}
+
+function setupPerformanceTracking() {
+    // Track Core Web Vitals
+    if ('PerformanceObserver' in window) {
+        // Largest Contentful Paint
+        new PerformanceObserver((list) => {
+            const entries = list.getEntries();
+            const lastEntry = entries[entries.length - 1];
+            performanceMonitor.reportMetric('lcp', lastEntry.startTime);
+        }).observe({ entryTypes: ['largest-contentful-paint'] });
+
+        // First Input Delay
+        new PerformanceObserver((list) => {
+            const entries = list.getEntries();
+            entries.forEach(entry => {
+                performanceMonitor.reportMetric('fid', entry.processingStart - entry.startTime);
+            });
+        }).observe({ entryTypes: ['first-input'] });
+    }
+}
+
+// Legacy function support for existing code
+window.standWithNepal = {
+    app,
+    performanceMonitor,
+    securityManager,
+    cacheManager,
+    
+    // Expose key functions for backward compatibility
+    showNotification: (message, type) => {
+        app?.components?.notifications?.show(message, type);
+    },
+    
+    getCurrentLocation: () => {
+        return app?.getCurrentLocation();
+    },
+    
+    loadIssues: () => {
+        return app?.loadIssues();
+    }
+};
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (app) {
+        app.cleanup();
+    }
+    
+    performance.mark('app-end');
+    performance.measure('app-total-time', 'app-start', 'app-end');
+});
+
+// Development helpers
+if (process.env.NODE_ENV === 'development') {
+    window.debug = {
+        app,
+        performance: performanceMonitor,
+        security: securityManager,
+        cache: cacheManager,
+        
+        getPerformanceReport: () => {
+            return {
+                navigation: performance.getEntriesByType('navigation')[0],
+                resources: performance.getEntriesByType('resource'),
+                measures: performance.getEntriesByType('measure'),
+                marks: performance.getEntriesByType('mark')
+            };
+        }
+    };
+}
+
+// Legacy code for existing functionality
 // Event Listeners
 function setupEventListeners() {
     // Modal controls
